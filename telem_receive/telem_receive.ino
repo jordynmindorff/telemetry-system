@@ -1,5 +1,5 @@
 #include <Wire.h>
-#include <limits>
+#include <math.h>
 
 void setup() {
   Serial.begin(115200);
@@ -20,7 +20,7 @@ void decode(float *decoded, uint8_t *encoded, uint8_t num_values) {
 
     // Out of bounds
     if(together == 0xFFFF) {
-      decoded[i] = std::numeric_limits<float>::quiet_NaN();
+      decoded[i] = NAN;
       continue;
     }
 

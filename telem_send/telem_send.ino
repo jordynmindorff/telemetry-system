@@ -1,6 +1,5 @@
 #include "DFRobot_GNSS.h"
 #include <Wire.h>
-#include <cmath>
 
 #define SHT_ADDR 0x44
 
@@ -63,13 +62,13 @@ void loop() {
   float humidity = -6.0 + 125.0 * (val_humidity/65535.0);
 
   Serial.print("Temp:");
-  Serial.println(temp);
+  Serial.println(temperature);
   Serial.print("Humidity: ");
   Serial.println(humidity);
 
   // GPS
   sLonLat_t latRaw = gnss.getLat();
-  sLonLat_t longRaw = gnss.getLon();
+  sLonLat_t lonRaw = gnss.getLon();
   float altitude = gnss.getAlt();
   float velocity = gnss.getSog();
   float course = gnss.getCog();
@@ -84,10 +83,10 @@ void loop() {
     initialLon = lon;
   }
 
-  float distance = distance(initialLat, initialLon, lat, lon);
+  float dist = distance(initialLat, initialLon, lat, lon);
 
   // Encode radio payload
-  float values[] = {velocity, altitude, course, distance, temperature, humidity};
+  float values[] = {velocity, altitude, course, dist, temperature, humidity};
   uint8_t payload[12] = {};
 
   encode(values, payload, 6);
@@ -112,16 +111,18 @@ float distance(float lat1, float lon1, float lat2, float lon2) {
 void encode(float *source, uint8_t *target, uint8_t num_values) {
   for (uint8_t i{}; i < num_values; i++) {
     // Handle out of bounds for my encoding scheme
-    if (std::abs(source[i]) > 500) {
+    if (abs(source[i]) > 500) {
       target[i*2] = 0xFF;
       target[i*2 + 1] = 0xFF;
 
       continue;
     }
 
-    uint16_t together = uint16_t(std::abs(source[i]) * 100);
+    uint16_t together = uint16_t(abs(source[i]) * 100);
 
     target[i*2] = (uint8_t)((together & 0xFF00) >> 8);
     target[i*2 + 1] = (uint8_t)(together & 0xFF);
+
+  
   }
 }
