@@ -1,5 +1,6 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include "DFRobot_GNSS.h"
 #include <Wire.h>
 
 #define SHT_ADDR 0x44
@@ -8,12 +9,13 @@ uint8_t shtBuf[8];
 uint8_t sendBuf[16];
 uint8_t error;
 
-int16_t val_temp;
-int16_t val_humidity;
-float temp;
-float humidity;
+float initialLat{};
+float initialLon{};
 
 Adafruit_MPU6050 mpu;
+DFRobot_GNSS_I2C gnss(&Wire, GNSS_DEVICE_ADDR);
+
+float distance(float lat1, float lon1, float lat2, float lon2);
 
 void setup() {
   Wire.begin();
@@ -21,7 +23,7 @@ void setup() {
 
   // Init MPU
   if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
+    Serial.println("Failed to find MPU6050");
     while (1) {
       delay(10);
     }
@@ -30,6 +32,13 @@ void setup() {
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  if (!gnss.begin()) {
+    Serial.println("Failed init on GPS");
+  }
+
+  gnss.enablePower();
+  gnss.setGnss(eGPS_BeiDou_GLONASS); // Use all available sources
 
   delay(100);
 }
@@ -47,51 +56,65 @@ void loop() {
 	if ( error != 0 ) {
     Serial.println("Error on I2C send.");
     return; // Supposedly equivalent to continue in arduino environment
-	} else {
-		// Read the 6 bytes of data into buffer (arduino has a comparatively weird workflow for this...)
-		Wire.requestFrom(SHT_ADDR, 6);
+	}
 
-    for(int i = 0; i < 6; i++) {
-      uint8_t byte = Wire.read(); // Receive a byte
-      shtBuf[i] = byte;
-    }
+  // Read the 6 bytes of data into buffer (arduino has a comparatively weird workflow for this...)
+  Wire.requestFrom(SHT_ADDR, 6);
 
-    // Combine the bytes for temp
-    val_temp = ((int16_t)shtBuf[0] << 8) | (int16_t)(shtBuf[1]);
-
-    // Combine the bytes for humidity
-    val_humidity = ((int16_t)shtBuf[3] << 8) | (int16_t)(shtBuf[4]);
-
-    // Convert via formulas from datasheet - digital sensing principle!
-    temp = -45.0 + 175.0*(val_temp/65535.0);
-    humidity = -6.0 + 125.0*(val_humidity/65535.0);
-
-    Serial.print("Temp:");
-    Serial.println(temp);
-    Serial.print("Humidity: ");
-    Serial.println(humidity);
-
-    // MPU6050 - we have a better source for temperature, so let's ignore this one
-    sensors_event_t a, g, temp_dummy;
-    mpu.getEvent(&a, &g, &temp_dummy);
-
-    Serial.print("Acceleration X: ");
-    Serial.print(a.acceleration.x);
-    Serial.print(", Y: ");
-    Serial.print(a.acceleration.y);
-    Serial.print(", Z: ");
-    Serial.print(a.acceleration.z);
-    Serial.println(" m/s^2");
-
-    Serial.print("Rotation X: ");
-    Serial.print(g.gyro.x);
-    Serial.print(", Y: ");
-    Serial.print(g.gyro.y);
-    Serial.print(", Z: ");
-    Serial.print(g.gyro.z);
-    Serial.println(" rad/s");
+  for(int i = 0; i < 6; i++) {
+    uint8_t byte = Wire.read(); // Receive a byte
+    shtBuf[i] = byte;
   }
+
+  // Combine the bytes for temp
+  int16_t val_temp = ((int16_t)shtBuf[0] << 8) | (int16_t)(shtBuf[1]);
+
+  // Combine the bytes for humidity
+  int16_t val_humidity = ((int16_t)shtBuf[3] << 8) | (int16_t)(shtBuf[4]);
+
+  // Convert via formulas from datasheet - digital sensing principle!
+  float temp = -45.0 + 175.0*(val_temp/65535.0);
+  float humidity = -6.0 + 125.0*(val_humidity/65535.0);
+
+  Serial.print("Temp:");
+  Serial.println(temp);
+  Serial.print("Humidity: ");
+  Serial.println(humidity);
+
+  // GPS
+  sLonLat_t latRaw = gnss.getLat();
+  sLonLat_t longRaw = gnss.getLon();
+  float altitude = gnss.getAlt();
+  float velocity = gnss.getSog();
+  float course = gnss.getCog();
+
+  // Take decimal degrees format
+  float lat = latRaw.latitudeDegree;
+  float lon = lonRaw.lonitudeDegree;
+
+  // Set initial values if this is the first iteration
+  if (initialLat == 0) {
+    initialLat = lat;
+    initialLon = lon;
+  }
+
+  float distance = distance(initialLat, initialLon, lat, lon);
+
+  // TODO: Encode radio payload
+  uint8_t payload[12] = {};
+
+  // TODO: Send payload
 
   Serial.println("Cycle complete");
   delay(2000);
+}
+
+// Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
+float distance(float lat1, float lon1, float lat2, float lon2) {
+    const float r = 6371.0; // Earth's radius in kilometers
+    const float p = M_PI / 180.0; // Conversion factor from degrees to radians
+
+    float a = 0.5 - cos((lat2 - lat1) * p) / 2.0 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2.0;
+
+    return 2.0 * r * asin(sqrt(a));
 }
