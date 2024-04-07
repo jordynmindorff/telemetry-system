@@ -2,12 +2,7 @@
 
 Comms information used for nRF24L01 devices.
 
-## Addresses
-
--   Tx (vehicle side): 0x01
--   Rx (ground side): 0x02
-
-## Message Format (Assuming GPS Data):
+## Message Format (Assuming GPS Data is Available):
 
 {Velocity1, Velocity2, Alt1, Alt2, Course1, Course2, Dist1, Dist2, Temp1, Temp2, Humid1, Humid2}
 
@@ -32,3 +27,7 @@ You may be thinking: gosh, there must be a better way than to make up this arbit
 You're probably right, but I would rather consistency over the air than to use the 50 different ways these get encoded by the sensor breakout boards.
 
 It was really tempting to break this standard with the temp & humidity values since I'm already reading two raw bytes... but consistency.
+
+## Addresses
+
+-   0x18 will be the send/recieve address over the air. (Simply because I like the number 18)

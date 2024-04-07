@@ -1,18 +1,26 @@
 #include "DFRobot_GNSS.h"
 #include <Wire.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
 
 #define SHT_ADDR 0x44
+#define RF_CE 7
+#define RF_CSN 8
+
+float distance(float lat1, float lon1, float lat2, float lon2);
+void encode(float *source, uint8_t *target, uint8_t num_values);
 
 uint8_t shtBuf[8];
-uint8_t sendBuf[16];
 uint8_t error;
 
 float initialLat{};
 float initialLon{};
 
 DFRobot_GNSS_I2C gnss(&Wire, GNSS_DEVICE_ADDR);
+RF24 radio(RF_CE, RF_CSN);
 
-float distance(float lat1, float lon1, float lat2, float lon2);
+const uint8_t address[1] = {0x18};
 
 void setup() {
   Wire.begin();
@@ -24,6 +32,12 @@ void setup() {
 
   gnss.enablePower();
   gnss.setGnss(eGPS_BeiDou_GLONASS); // Use all available sources
+
+  // Radio setup
+  radio.begin();
+  radio.openWritingPipe(address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.stopListening();
 
   delay(100);
 }
@@ -88,21 +102,19 @@ void loop() {
   // Encode radio payload
   float values[] = {velocity, altitude, course, dist, temperature, humidity};
   uint8_t payload[12] = {};
-
   encode(values, payload, 6);
 
-  // TODO: Send payload via radio
+  radio.write(payload, sizeof(payload)); // Send via radio
 
   Serial.println("Cycle complete");
-  delay(2000);
+  delay(3000);
 }
 
 // Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
 float distance(float lat1, float lon1, float lat2, float lon2) {
     const float r = 6371.0; // Earth's radius in kilometers
-    const float p = M_PI / 180.0; // Conversion factor from degrees to radians
 
-    float a = 0.5 - cos((lat2 - lat1) * p) / 2.0 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2.0;
+    float a = 0.5 - cos(radians(lat2 - lat1)) / 2.0 + cos(radians(lat1)) * cos(radians(lat2)) * (1 - cos(radians(lon2 - lon1))) / 2.0;
 
     return 2.0 * r * asin(sqrt(a));
 }
