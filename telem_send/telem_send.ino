@@ -1,5 +1,6 @@
 #include "DFRobot_GNSS.h"
 #include <Wire.h>
+#include <cmath>
 
 #define SHT_ADDR 0x44
 
@@ -118,9 +119,9 @@ void encode(float *source, uint8_t *target, uint8_t num_values) {
       continue;
     }
 
-    uint16_t together = uint16_t(std::abs(source[i]) * 125);
+    uint16_t together = uint16_t(std::abs(source[i]) * 100);
 
     target[i*2] = (uint8_t)((together & 0xFF00) >> 8);
-    target[i*2 + 1] = (uint8_t)(together && 0xFF);
+    target[i*2 + 1] = (uint8_t)(together & 0xFF);
   }
 }

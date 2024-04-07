@@ -23,7 +23,7 @@ Comms information used for nRF24L01 devices.
 **Everything is 2 bytes encoded as follows:**
 
 -   Take the absolute value of the number (we are only considering magnitudes here)
--   Take float, multiply by 125 and cast to uint16_t
+-   Take float, multiply by 100 and cast to uint16_t
 -   Split into two bytes
 
 _Note: this results in a conscious decision that any value greater than ~500 will not be encoded and will instead be sent as 0xffff and should be ignored._
