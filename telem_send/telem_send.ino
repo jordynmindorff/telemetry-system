@@ -1,5 +1,3 @@
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 #include "DFRobot_GNSS.h"
 #include <Wire.h>
 
@@ -12,7 +10,6 @@ uint8_t error;
 float initialLat{};
 float initialLon{};
 
-Adafruit_MPU6050 mpu;
 DFRobot_GNSS_I2C gnss(&Wire, GNSS_DEVICE_ADDR);
 
 float distance(float lat1, float lon1, float lat2, float lon2);
@@ -20,18 +17,6 @@ float distance(float lat1, float lon1, float lat2, float lon2);
 void setup() {
   Wire.begin();
   Serial.begin(115200);
-
-  // Init MPU
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050");
-    while (1) {
-      delay(10);
-    }
-  }
-
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
   if (!gnss.begin()) {
     Serial.println("Failed init on GPS");
