@@ -57,9 +57,9 @@ void loop() {
   // Combine the bytes for humidity
   int16_t val_humidity = ((int16_t)shtBuf[3] << 8) | (int16_t)(shtBuf[4]);
 
-  // Convert via formulas from datasheet - digital sensing principle!
-  float temp = -45.0 + 175.0*(val_temp/65535.0);
-  float humidity = -6.0 + 125.0*(val_humidity/65535.0);
+  // Convert via formulas from datasheet
+  float temperature = -45.0 + 175.0 * (val_temp/65535.0);
+  float humidity = -6.0 + 125.0 * (val_humidity/65535.0);
 
   Serial.print("Temp:");
   Serial.println(temp);
@@ -85,10 +85,13 @@ void loop() {
 
   float distance = distance(initialLat, initialLon, lat, lon);
 
-  // TODO: Encode radio payload
+  // Encode radio payload
+  float values[] = {velocity, altitude, course, distance, temperature, humidity};
   uint8_t payload[12] = {};
 
-  // TODO: Send payload
+  encode(values, payload, 6);
+
+  // TODO: Send payload via radio
 
   Serial.println("Cycle complete");
   delay(2000);
@@ -102,4 +105,22 @@ float distance(float lat1, float lon1, float lat2, float lon2) {
     float a = 0.5 - cos((lat2 - lat1) * p) / 2.0 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2.0;
 
     return 2.0 * r * asin(sqrt(a));
+}
+
+// Custom encoding scheme for values to transmit
+void encode(float *source, uint8_t *target, uint8_t num_values) {
+  for (uint8_t i{}; i < num_values; i++) {
+    // Handle out of bounds for my encoding scheme
+    if (std::abs(source[i]) > 500) {
+      target[i*2] = 0xFF;
+      target[i*2 + 1] = 0xFF;
+
+      continue;
+    }
+
+    uint16_t together = uint16_t(std::abs(source[i]) * 125);
+
+    target[i*2] = (uint8_t)((together & 0xFF00) >> 8);
+    target[i*2 + 1] = (uint8_t)(together && 0xFF);
+  }
 }
