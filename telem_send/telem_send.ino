@@ -5,8 +5,6 @@
 #include <RF24.h>
 
 #define SHT_ADDR 0x44
-#define RF_CE 7
-#define RF_CSN 8
 
 float distance(float lat1, float lon1, float lat2, float lon2);
 void encode(float *source, uint8_t *target, uint8_t num_values);
@@ -17,24 +15,46 @@ uint8_t error;
 float initialLat{};
 float initialLon{};
 
-DFRobot_GNSS_I2C gnss(&Wire, GNSS_DEVICE_ADDR);
+// I2C Definitions
+#define I2C_SCL PB6
+#define I2C_SDA PB7
+TwoWire *i2c_bus = new TwoWire(I2C_SDA, I2C_SCL);
+
+// SPI Definitions
+#define RF_CE PB1
+#define RF_CSN PF0
+#define SPI_MISO PB4
+#define SPI_MOSI PB5
+#define SPI_SCLK PB3
+
+// Peripheral Definitions
+DFRobot_GNSS_I2C gnss(i2c_bus, GNSS_DEVICE_ADDR);
 RF24 radio(RF_CE, RF_CSN);
 
 const uint8_t address[1] = {0x18};
 
 void setup() {
-  Wire.begin();
   Serial.begin(115200);
 
-  if (!gnss.begin()) {
+  // Also calls begin on the i2c_bus
+  while (!gnss.begin()) {
     Serial.println("Failed init on GPS");
+    delay(5000);
   }
 
   gnss.enablePower();
   gnss.setGnss(eGPS_BeiDou_GLONASS); // Use all available sources
 
-  // Radio setup
-  radio.begin();
+  // SPI & Radio Setup
+  SPI.setMISO(SPI_MISO);
+  SPI.setMOSI(SPI_MOSI);
+  SPI.setSCLK(SPI_SCLK);
+
+  while(!radio.begin()) {
+    Serial.println("Failed init on radio");
+    delay(5000);
+  }
+
   radio.openWritingPipe(address);
   radio.setPALevel(RF24_PA_MIN);
   radio.stopListening();
@@ -44,24 +64,26 @@ void setup() {
 
 void loop() {
   // Do temp & humidity stuff
-  Wire.beginTransmission(SHT_ADDR);
+  i2c_bus->beginTransmission(SHT_ADDR);
 
   shtBuf[0] = 0xFD; // Read high precision command
-  Wire.write(shtBuf, 1);
+  i2c_bus->write(shtBuf, 1);
 
-  error = Wire.endTransmission();
+
+  error = i2c_bus->endTransmission();
   delay(100); // Datasheet says wait (and learned the hard way that its correct)
 
 	if ( error != 0 ) {
     Serial.println("Error on I2C send.");
+    delay(5000);
     return; // Supposedly equivalent to continue in arduino environment
 	}
 
   // Read the 6 bytes of data into buffer (arduino has a comparatively weird workflow for this...)
-  Wire.requestFrom(SHT_ADDR, 6);
+  i2c_bus->requestFrom(SHT_ADDR, 6);
 
   for(int i = 0; i < 6; i++) {
-    uint8_t byte = Wire.read(); // Receive a byte
+    uint8_t byte = i2c_bus->read(); // Receive a byte
     shtBuf[i] = byte;
   }
 
@@ -74,11 +96,6 @@ void loop() {
   // Convert via formulas from datasheet
   float temperature = -45.0 + 175.0 * (val_temp/65535.0);
   float humidity = -6.0 + 125.0 * (val_humidity/65535.0);
-
-  Serial.print("Temp:");
-  Serial.println(temperature);
-  Serial.print("Humidity: ");
-  Serial.println(humidity);
 
   // GPS
   sLonLat_t latRaw = gnss.getLat();
@@ -104,6 +121,20 @@ void loop() {
   uint8_t payload[12] = {};
   encode(values, payload, 6);
 
+  Serial.print("Velocity: ");
+  Serial.println(values[0]);
+  Serial.print("Altitude: ");
+  Serial.println(values[1]);
+  Serial.print("Course: ");
+  Serial.println(values[2]);
+  Serial.print("Distance from Start: ");
+  Serial.println(values[3]);
+  Serial.print("Temperature: ");
+  Serial.println(values[4]);
+  Serial.print("Humidity: ");
+  Serial.println(values[5]);
+
+  // uint8_t payload[1] = {0x18};
   radio.write(payload, sizeof(payload)); // Send via radio
 
   Serial.println("Cycle complete");
@@ -134,7 +165,5 @@ void encode(float *source, uint8_t *target, uint8_t num_values) {
 
     target[i*2] = (uint8_t)((together & 0xFF00) >> 8);
     target[i*2 + 1] = (uint8_t)(together & 0xFF);
-
-  
   }
 }
