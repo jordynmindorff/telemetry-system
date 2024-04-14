@@ -4,8 +4,8 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
-#define RF_CE 7
-#define RF_CSN 8
+#define RF_CE 4
+#define RF_CSN 6
 
 void decode(float *decoded, uint8_t *encoded, uint8_t num_values);
 
@@ -17,14 +17,20 @@ void setup() {
   Serial.begin(115200);
 
   // Radio setup
-  radio.begin();
-  radio.openReadingPipe(0, address); // 0 = "reading pipe number"
+  while(!radio.begin()) {
+    Serial.println("Failed init on radio");
+    delay(5000);
+  }
+
+  radio.openReadingPipe(1, address); // 0 = "reading pipe number"
   radio.setPALevel(RF24_PA_MIN);
   radio.startListening();
 }
 
 void loop() {
-  if (radio.available()) {
+  uint8_t pipe;
+  if (radio.available(pipe)) {
+    Serial.println("Avail!");
     // Read over the air
     uint8_t received[12]{};
     radio.read(&received, sizeof(received));
@@ -46,7 +52,8 @@ void loop() {
     Serial.println(values[5]);
   }
 
-  delay(500);
+  Serial.println("Cycle complete.");
+  delay(1000);
 }
 
 // Custom decoding implementation

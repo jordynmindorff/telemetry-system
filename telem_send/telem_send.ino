@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <printf.h>
 
 #define SHT_ADDR 0x44
 
@@ -35,6 +36,7 @@ const uint8_t address[1] = {0x18};
 
 void setup() {
   Serial.begin(115200);
+  printf_begin();
 
   // Also calls begin on the i2c_bus
   while (!gnss.begin()) {
@@ -55,8 +57,10 @@ void setup() {
     delay(5000);
   }
 
+  const byte address[2] = "1";
+
   radio.openWritingPipe(address);
-  radio.setPALevel(RF24_PA_MIN);
+  radio.setPALevel(RF24_PA_LOW);
   radio.stopListening();
 
   delay(100);
@@ -135,10 +139,16 @@ void loop() {
   Serial.println(values[5]);
 
   // uint8_t payload[1] = {0x18};
-  radio.write(payload, sizeof(payload)); // Send via radio
+  float test = 44.44;
+  bool sent = radio.write(payload, sizeof(payload)); // Send via radio
+
+  if(!sent) {
+    Serial.println("Tx error!");
+  }
+  // radio.printPrettyDetails();
 
   Serial.println("Cycle complete");
-  delay(3000);
+  delay(1000);
 }
 
 // Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
