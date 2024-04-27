@@ -5,20 +5,10 @@
 #include <RF24.h>
 #include <printf.h>
 
-#define SHT_ADDR 0x44
-
-float distance(float lat1, float lon1, float lat2, float lon2);
-void encode(float *source, uint8_t *target, uint8_t num_values);
-
-uint8_t shtBuf[8];
-uint8_t error;
-
-float initialLat{};
-float initialLon{};
-
 // I2C Definitions
 #define I2C_SCL PB6
 #define I2C_SDA PB7
+#define SHT_ADDR 0x44
 TwoWire *i2c_bus = new TwoWire(I2C_SDA, I2C_SCL);
 
 // SPI Definitions
@@ -32,13 +22,22 @@ TwoWire *i2c_bus = new TwoWire(I2C_SDA, I2C_SCL);
 DFRobot_GNSS_I2C gnss(i2c_bus, GNSS_DEVICE_ADDR);
 RF24 radio(RF_CE, RF_CSN);
 
+float distance(float lat1, float lon1, float lat2, float lon2);
+void encode(float *source, uint8_t *target, uint8_t num_values);
+
+uint8_t shtBuf[8];
+uint8_t error;
+
+float initialLat{};
+float initialLon{};
+
 const uint8_t address[1] = {0x18};
 
 void setup() {
   Serial.begin(115200);
   printf_begin();
 
-  // Also calls begin on the i2c_bus
+  // Also calls begin() on the i2c_bus
   while (!gnss.begin()) {
     Serial.println("Failed init on GPS");
     delay(5000);
@@ -57,20 +56,18 @@ void setup() {
     delay(5000);
   }
 
-  const byte address[2] = "1";
+  const uint8_t address[1] = {0x18};
 
   radio.openWritingPipe(address);
   radio.setPALevel(RF24_PA_LOW);
   radio.stopListening();
-
-  delay(100);
 }
 
 void loop() {
   // Do temp & humidity stuff
   i2c_bus->beginTransmission(SHT_ADDR);
 
-  shtBuf[0] = 0xFD; // Read high precision command
+  shtBuf[0] = 0xFD; // High precision command
   i2c_bus->write(shtBuf, 1);
 
 
@@ -80,37 +77,37 @@ void loop() {
 	if ( error != 0 ) {
     Serial.println("Error on I2C send.");
     delay(5000);
-    return; // Supposedly equivalent to continue in arduino environment
+    return; // Equivalent to continue in arduino environment
 	}
 
-  // Read the 6 bytes of data into buffer (arduino has a comparatively weird workflow for this...)
+  // Read the 6 bytes of data into buffer
   i2c_bus->requestFrom(SHT_ADDR, 6);
 
-  for(int i = 0; i < 6; i++) {
+  for(int i{}; i < 6; i++) {
     uint8_t byte = i2c_bus->read(); // Receive a byte
     shtBuf[i] = byte;
   }
 
   // Combine the bytes for temp
-  int16_t val_temp = ((int16_t)shtBuf[0] << 8) | (int16_t)(shtBuf[1]);
+  int16_t val_temp{((int16_t)shtBuf[0] << 8) | (int16_t)(shtBuf[1])};
 
   // Combine the bytes for humidity
-  int16_t val_humidity = ((int16_t)shtBuf[3] << 8) | (int16_t)(shtBuf[4]);
+  int16_t val_humidity{((int16_t)shtBuf[3] << 8) | (int16_t)(shtBuf[4])};
 
   // Convert via formulas from datasheet
-  float temperature = -45.0 + 175.0 * (val_temp/65535.0);
-  float humidity = -6.0 + 125.0 * (val_humidity/65535.0);
+  float temperature{-45.0 + 175.0 * (val_temp/65535.0)};
+  float humidity{-6.0 + 125.0 * (val_humidity/65535.0)};
 
   // GPS
-  sLonLat_t latRaw = gnss.getLat();
-  sLonLat_t lonRaw = gnss.getLon();
-  float altitude = gnss.getAlt();
-  float velocity = gnss.getSog();
-  float course = gnss.getCog();
+  sLonLat_t latRaw{gnss.getLat()};
+  sLonLat_t lonRaw{gnss.getLon()};
+  float altitude{gnss.getAlt()};
+  float velocity{gnss.getSog()};
+  float course{gnss.getCog()};
 
   // Take decimal degrees format
-  float lat = latRaw.latitudeDegree;
-  float lon = lonRaw.lonitudeDegree;
+  float lat{latRaw.latitudeDegree};
+  float lon{lonRaw.lonitudeDegree};
 
   // Set initial values if this is the first iteration
   if (initialLat == 0) {
@@ -118,7 +115,8 @@ void loop() {
     initialLon = lon;
   }
 
-  float dist = distance(initialLat, initialLon, lat, lon);
+  Serial.println(lat);
+  float dist{distance(initialLat, initialLon, lat, lon)};
 
   // Encode radio payload
   float values[] = {velocity, altitude, course, dist, temperature, humidity};
@@ -138,12 +136,10 @@ void loop() {
   Serial.print("Humidity: ");
   Serial.println(values[5]);
 
-  // uint8_t payload[1] = {0x18};
-  float test = 44.44;
-  bool sent = radio.write(payload, sizeof(payload)); // Send via radio
+  bool sent{radio.write(payload, sizeof(payload))}; // Send via radio
 
   if(!sent) {
-    Serial.println("Tx error!");
+    Serial.println("Tx fail!");
   }
   // radio.printPrettyDetails();
 
@@ -153,9 +149,9 @@ void loop() {
 
 // Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
 float distance(float lat1, float lon1, float lat2, float lon2) {
-    const float r = 6371.0; // Earth's radius in kilometers
+    const float r{6371.0}; // Earth's radius in kilometers
 
-    float a = 0.5 - cos(radians(lat2 - lat1)) / 2.0 + cos(radians(lat1)) * cos(radians(lat2)) * (1 - cos(radians(lon2 - lon1))) / 2.0;
+    float a{0.5 - cos(radians(lat2 - lat1)) / 2.0 + cos(radians(lat1)) * cos(radians(lat2)) * (1 - cos(radians(lon2 - lon1))) / 2.0};
 
     return 2.0 * r * asin(sqrt(a));
 }
@@ -171,7 +167,7 @@ void encode(float *source, uint8_t *target, uint8_t num_values) {
       continue;
     }
 
-    uint16_t together = uint16_t(abs(source[i]) * 100);
+    uint16_t together{uint16_t(abs(source[i]) * 100)};
 
     target[i*2] = (uint8_t)((together & 0xFF00) >> 8);
     target[i*2 + 1] = (uint8_t)(together & 0xFF);

@@ -22,15 +22,15 @@ void setup() {
     delay(5000);
   }
 
-  radio.openReadingPipe(1, address); // 0 = "reading pipe number"
+  radio.openReadingPipe(0, address); // 0 = "reading pipe number"
   radio.setPALevel(RF24_PA_MIN);
   radio.startListening();
 }
 
 void loop() {
-  uint8_t pipe;
-  if (radio.available(pipe)) {
-    Serial.println("Avail!");
+  if (radio.available()) {
+    Serial.println("Traffic received!");
+
     // Read over the air
     uint8_t received[12]{};
     radio.read(&received, sizeof(received));
@@ -53,13 +53,13 @@ void loop() {
   }
 
   Serial.println("Cycle complete.");
-  delay(1000);
+  delay(500);
 }
 
 // Custom decoding implementation
 void decode(float *decoded, uint8_t *encoded, uint8_t num_values) {
   for (uint8_t i{}; i < num_values; i++) {
-    uint16_t together = ((uint16_t)encoded[i*2] << 8) | encoded[i*2 + 1];
+    uint16_t together{((uint16_t)encoded[i*2] << 8) | encoded[i*2 + 1]};
 
     // Out of bounds
     if(together == 0xFFFF) {
