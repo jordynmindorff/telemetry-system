@@ -136,18 +136,17 @@ void loop() {
   Serial.print("Humidity: ");
   Serial.println(values[5]);
 
-  bool sent{radio.write(payload, sizeof(payload))}; // Send via radio
+  bool sent{radio.write(payload, sizeof(payload))}; // Send payload via radio
 
   if(!sent) {
     Serial.println("Tx fail!");
   }
-  // radio.printPrettyDetails();
 
   Serial.println("Cycle complete");
   delay(1000);
 }
 
-// Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
+// Given a pair of latitudes and longitudes, get the straight-line distance (thanks StackOverflow & mathematicians)
 float distance(float lat1, float lon1, float lat2, float lon2) {
     const float r{6371.0}; // Earth's radius in kilometers
 
