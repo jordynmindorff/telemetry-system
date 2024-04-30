@@ -6,17 +6,17 @@
 #include <printf.h>
 
 // I2C Definitions
-#define I2C_SCL PB6
-#define I2C_SDA PB7
+#define I2C_SCL PB8
+#define I2C_SDA PB9
 #define SHT_ADDR 0x44
 TwoWire *i2c_bus = new TwoWire(I2C_SDA, I2C_SCL);
 
 // SPI Definitions
-#define RF_CE PB1
-#define RF_CSN PF0
-#define SPI_MISO PB4
-#define SPI_MOSI PB5
-#define SPI_SCLK PB3
+#define RF_CE PB10
+#define RF_CSN PB4
+#define SPI_MISO PA6
+#define SPI_MOSI PA7
+#define SPI_SCLK PA5
 
 // Peripheral Definitions
 DFRobot_GNSS_I2C gnss(i2c_bus, GNSS_DEVICE_ADDR);
@@ -55,8 +55,6 @@ void setup() {
     Serial.println("Failed init on radio");
     delay(5000);
   }
-
-  const uint8_t address[1] = {0x18};
 
   radio.openWritingPipe(address);
   radio.setPALevel(RF24_PA_LOW);
@@ -136,17 +134,17 @@ void loop() {
   Serial.print("Humidity: ");
   Serial.println(values[5]);
 
-  bool sent{radio.write(payload, sizeof(payload))}; // Send payload via radio
+  bool sent{radio.write(payload, sizeof(payload))}; // Send via radio
 
   if(!sent) {
     Serial.println("Tx fail!");
   }
 
   Serial.println("Cycle complete");
-  delay(1000);
+  delay(3000);
 }
 
-// Given a pair of latitudes and longitudes, get the straight-line distance (thanks StackOverflow & mathematicians)
+// Given a pair of lat longs, get the distance (thanks StackOverflow & mathematicians)
 float distance(float lat1, float lon1, float lat2, float lon2) {
     const float r{6371.0}; // Earth's radius in kilometers
 
