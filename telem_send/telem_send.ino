@@ -68,11 +68,10 @@ void loop() {
   shtBuf[0] = 0xFD; // High precision command
   i2c_bus->write(shtBuf, 1);
 
-
   error = i2c_bus->endTransmission();
   delay(100); // Datasheet says wait (and learned the hard way that its correct)
 
-	if ( error != 0 ) {
+	if (error != 0) {
     Serial.println("Error on I2C send.");
     delay(5000);
     return; // Equivalent to continue in arduino environment

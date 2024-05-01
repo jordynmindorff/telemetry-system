@@ -6,7 +6,7 @@ And thus, this project.
 
 ## Overview
 
-the telem_receive and telem_send folders contain arduino firmware code I wrote. The send side interacts with an SHT45 Temp/Humidity sensor and a DFRobot TEL0157 GPS board over I2C. I implemenetd the code for reading/writing the registers for the SHT45 myself, whereas I used a library for the GPS board (mainly due to a lack of good documentation).
+The telem_receive and telem_send folders contain arduino firmware code I wrote. The send side interacts with an SHT45 Temp/Humidity sensor and a DFRobot TEL0157 GPS board over I2C. I implemenetd the code for reading/writing the registers for the SHT45 myself, whereas I used a library for the GPS board (mainly due to a lack of good documentation).
 
 On both the send and receive sides, nRF24L01 RF transceivers are used for communications over the air. See [comms-structure.md](comms-structure.md) for details.
 
